@@ -70,25 +70,40 @@ html{overflow-anchor:none}
 
 
 <style>
-  .app-version {
-    position: fixed;
-    top: max(8px, env(safe-area-inset-top));
-    right: 10px;
-    z-index: 9999;
-    padding: 3px 7px;
-    border-radius: 8px;
-    font-size: 12px;
-    line-height: 1.2;
-    opacity: .75;
-    background: rgba(128,128,128,.12);
-    pointer-events: none;
-  }
+</style>
+
+
+<style>
+.app-version-inline{
+  display:inline-block;
+  margin-left:8px;
+  padding:2px 6px;
+  border-radius:6px;
+  font-size:.55em;
+  font-weight:500;
+  opacity:.75;
+  vertical-align:middle;
+}
+.app-title-version{
+  font-weight:700;
+  font-size:1.25rem;
+  margin:8px 0 14px;
+}
+</style>
+
+
+<style>
+#answer{scroll-margin:0!important;}
+#check,#next,#finish{
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
 </style>
 
 </head>
 <body autocomplete="off">
 <main class="app" data-form-type="other">
-<header><div><h1>🇬🇷 Greek Vocab</h1><div class="muted">Ton vocabulaire, directement sur ton téléphone</div></div><button id="install" class="small hidden">Installer</button></header>
+<header><div><h1>🇬🇷 Greek Vocab <span class="app-version-inline">v13</span></h1><div class="muted">Ton vocabulaire, directement sur ton téléphone</div></div><button id="install" class="small hidden">Installer</button></header>
 
 <div class="tabs">
 <button data-tab="quiz">Réviser</button><button data-tab="words">Mes mots</button><button data-tab="data">Importer</button>
@@ -236,44 +251,54 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch
 <script>
 (() => {
   const answer = document.getElementById('answer');
-  const buttons = [
-    document.getElementById('next'),
-    document.getElementById('check'),
-    document.getElementById('finish')
-  ].filter(Boolean);
-
+  const next = document.getElementById('next');
+  const check = document.getElementById('check');
+  const finish = document.getElementById('finish');
   if (!answer) return;
 
-  buttons.forEach(btn => {
-    btn.addEventListener('pointerdown', (e) => {
-      if ((e.pointerType === 'touch' || e.pointerType === 'pen') &&
-          document.activeElement === answer) {
-        e.preventDefault();
-        e.stopPropagation();
+  function runWithoutFocusChange(btn, action) {
+    const wasFocused = document.activeElement === answer;
+    if (!wasFocused) return false;
 
-        // Prevent the following click event from executing the action twice.
-        btn.dataset.pointerHandled = '1';
+    const y = window.scrollY;
+    const x = window.scrollX;
+    btn.dataset.pointerHandled = '1';
 
-        if (btn.id === 'next' && typeof window.nextAfterCheck === 'function') {
-          window.nextAfterCheck();
-        } else if (btn.id === 'check' && typeof window.checkAnswer === 'function') {
-          window.checkAnswer();
-        } else if (btn.id === 'finish' && typeof window.finishSession === 'function') {
-          window.finishSession();
+    action();
+
+    // Do not refocus asynchronously: Firefox may scroll/resize the visual viewport
+    // when focus() is called again. The original input focus is retained by
+    // preventing pointerdown's default action.
+    requestAnimationFrame(() => {
+      if (Math.abs(window.scrollY-y)>1 || Math.abs(window.scrollX-x)>1) {
+        window.scrollTo(x,y);
+      }
+    });
+    return true;
+  }
+
+  [next, check, finish].filter(Boolean).forEach(btn => {
+    btn.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+        if (document.activeElement === answer) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (btn === next && typeof window.nextAfterCheck === 'function')
+            runWithoutFocusChange(btn, window.nextAfterCheck);
+          else if (btn === check && typeof window.checkAnswer === 'function')
+            runWithoutFocusChange(btn, window.checkAnswer);
+          else if (btn === finish && typeof window.finishSession === 'function')
+            runWithoutFocusChange(btn, window.finishSession);
         }
-
-        requestAnimationFrame(() => {
-          try { answer.focus({preventScroll:true}); }
-          catch (_) { answer.focus(); }
-        });
       }
     }, {passive:false});
 
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', e => {
       if (btn.dataset.pointerHandled === '1') {
         e.preventDefault();
         e.stopImmediatePropagation();
-        btn.dataset.pointerHandled = '0';
+        btn.dataset.pointerHandled='0';
       }
     }, true);
   });

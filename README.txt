@@ -20,3 +20,5 @@ Version 10 - numéro de version visible en haut de la page.
 Version 11 - Vérifier affiche uniquement Correct/Faux et ne doit pas déplacer l'écran; Suivant affiche la bonne réponse pendant 2 secondes avant le mot suivant. Optimisation Firefox Android et prévention du double clic tactile.
 
 Version 12 - Suivant affiche Correct/Faux + bonne réponse pendant 2 secondes. Version affichée de manière fixe et visible en haut à droite.
+
+Version 13 - version visible inline dans le titre; interaction Firefox revue pour que Vérifier conserve le focus et le clavier sans refocus asynchrone.
