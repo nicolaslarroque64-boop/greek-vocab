@@ -71,12 +71,17 @@ html{overflow-anchor:none}
 
 <style>
   .app-version {
-    position: absolute;
-    top: 8px;
-    right: 12px;
+    position: fixed;
+    top: max(8px, env(safe-area-inset-top));
+    right: 10px;
+    z-index: 9999;
+    padding: 3px 7px;
+    border-radius: 8px;
     font-size: 12px;
-    opacity: .6;
-    z-index: 10;
+    line-height: 1.2;
+    opacity: .75;
+    background: rgba(128,128,128,.12);
+    pointer-events: none;
   }
 </style>
 
@@ -174,11 +179,12 @@ function checkAnswer(){
   $('feedback').className='feedback center '+(ok?'ok':'bad');
   return true;
 }
-function showCorrectAnswer(){
+function showNextFeedback(){
   if(!current)return;
   const expected=current.d==='gr-en'?current.en:current.gr;
-  $('feedback').textContent='Bonne réponse : '+expected;
-  $('feedback').className='feedback center';
+  const ok=norm($('answer').value)===norm(expected);
+  $('feedback').textContent=(ok?'✓ Correct !  ':'✗ Faux !  ')+'Bonne réponse : '+expected;
+  $('feedback').className='feedback center '+(ok?'ok':'bad');
 }
 function check(e){e.preventDefault();checkAnswer()}
 function nextAfterCheck(){
@@ -188,7 +194,7 @@ function nextAfterCheck(){
   // pendant exactement 2 secondes avant de passer au mot suivant.
   if(!answered) checkAnswer();
 
-  showCorrectAnswer();
+  showNextFeedback();
   $('next').textContent='Suivant…';
   $('next').disabled=true;
 
