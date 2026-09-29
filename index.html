@@ -25,6 +25,9 @@ label{display:block;font-size:14px;font-weight:650;margin:12px 0 6px}.row{displa
 .hidden{display:none}.stat{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #edf0f4}
 .list{max-height:280px;overflow:auto}.item{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid #edf0f4}
 @media(max-width:380px){.word{font-size:34px}.tabs{grid-template-columns:1fr}}
+html{overflow-anchor:none}
+#quiz{overflow-anchor:none}
+#answer{scroll-margin:0}
 </style>
 </head>
 <body autocomplete="off">
@@ -85,7 +88,25 @@ function save(){localStorage.setItem(KEY,JSON.stringify(words))}
 function norm(s){return s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?;:]/g,'').replace(/\s+/g,' ')}
 function renderWords(){ $('count').textContent=words.length+' mot'+(words.length>1?'s':'')+' enregistré'+(words.length>1?'s':''); $('wordList').innerHTML=words.length?words.map((w,i)=>`<div class="item"><span><b>${esc(w.gr)}</b> — ${esc(w.en)}</span><button class="small" data-del="${i}">Supprimer</button></div>`).join(''):'<p class="muted">Aucun mot pour le moment.</p>'; document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{words.splice(+b.dataset.del,1);save();renderWords();newQuestion()})}
 function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function newQuestion(){answered=false;$('answer').value='';$('feedback').textContent='';$('feedback').className='feedback center';if(!words.length){$('prompt').textContent='Ajoute des mots pour commencer';return}current=Math.floor(Math.random()*words.length);let d=$('direction').value;if(d==='random')d=Math.random()<.5?'gr-en':'en-gr';current={...words[current],d};$('prompt').textContent=d==='gr-en'?current.gr:current.en;$('answer').focus()}
+function newQuestion(keepKeyboard=true){
+  answered=false;
+  $('answer').value='';
+  $('feedback').textContent='';
+  $('feedback').className='feedback center';
+  if(!words.length){$('prompt').textContent='Ajoute des mots pour commencer';return}
+  current=Math.floor(Math.random()*words.length);
+  let d=$('direction').value;
+  if(d==='random')d=Math.random()<.5?'gr-en':'en-gr';
+  current={...words[current],d};
+  $('prompt').textContent=d==='gr-en'?current.gr:current.en;
+  if(keepKeyboard){
+    // Keep the existing keyboard open without scrolling the page.
+    // requestAnimationFrame lets the input update before focus is restored.
+    requestAnimationFrame(()=>{
+      $('answer').focus({preventScroll:true});
+    });
+  }
+}
 function checkAnswer(){
   if(answered||!current)return false;
   let expected=current.d==='gr-en'?current.en:current.gr;
@@ -108,8 +129,14 @@ function nextAfterCheck(){
     checkAnswer();
     $('next').textContent='Suivant…';
     $('next').disabled=true;
-    setTimeout(()=>{ $('next').disabled=false; $('next').textContent='Suivant'; newQuestion(); },900);
-  } else newQuestion();
+    setTimeout(()=>{
+      $('next').disabled=false;
+      $('next').textContent='Suivant';
+      newQuestion(true);
+    },900);
+  } else {
+    newQuestion(true);
+  }
 }
 $('quizForm').onsubmit=check;$('next').onclick=nextAfterCheck;$('direction').onchange=newQuestion;$('newSession').onclick=()=>{score=0;total=0;wrongWords=[];$('score').textContent='0 / 0';$('summary').classList.add('hidden');$('quiz').classList.remove('hidden');newQuestion()};$('newSession').onclick=()=>{score=0;total=0;$('score').textContent='0 / 0';newQuestion()};
 $('add').onclick=()=>{let g=$('greek').value.trim(),e=$('english').value.trim();if(!g||!e){$('addMsg').textContent='Remplis les deux champs.';return}words.push({gr:g,en:e});save();$('greek').value='';$('english').value='';$('addMsg').textContent='✓ Mot ajouté.';renderWords();newQuestion();$('greek').focus()};
