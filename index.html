@@ -48,6 +48,14 @@ label{display:block;font-size:14px;font-weight:650;margin:12px 0 6px}.row{displa
 </form>
 <div id="feedback" class="feedback center"></div>
 <div class="stat"><span>Score</span><b id="score">0 / 0</b></div>
+<button id="finish" type="button" style="width:100%;margin-top:14px">Terminer la session</button>
+</section>
+<section id="summary" class="card hidden">
+<h2>🎉 Session terminée</h2>
+<div class="center" style="font-size:28px;font-weight:750;margin:18px 0" id="finalScore">0 / 0</div>
+<p class="muted center" id="finalStats"></p>
+<div id="wrongTitle"><h2 style="margin-top:22px">Mots à revoir</h2><div id="wrongList" class="list"></div></div>
+<button id="restart" class="primary" style="width:100%;margin-top:18px">Nouvelle session</button>
 </section>
 
 <section id="words" class="card hidden">
@@ -71,19 +79,58 @@ label{display:block;font-size:14px;font-weight:650;margin:12px 0 6px}.row{displa
 </main>
 <script>
 const KEY='greek-vocab-v1';
-let words=JSON.parse(localStorage.getItem(KEY)||'[]'), current=null, answered=false, score=0,total=0;
+let words=JSON.parse(localStorage.getItem(KEY)||'[]'), current=null, answered=false, score=0,total=0, wrongWords=[];
 const $=id=>document.getElementById(id);
 function save(){localStorage.setItem(KEY,JSON.stringify(words))}
 function norm(s){return s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?;:]/g,'').replace(/\s+/g,' ')}
 function renderWords(){ $('count').textContent=words.length+' mot'+(words.length>1?'s':'')+' enregistré'+(words.length>1?'s':''); $('wordList').innerHTML=words.length?words.map((w,i)=>`<div class="item"><span><b>${esc(w.gr)}</b> — ${esc(w.en)}</span><button class="small" data-del="${i}">Supprimer</button></div>`).join(''):'<p class="muted">Aucun mot pour le moment.</p>'; document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{words.splice(+b.dataset.del,1);save();renderWords();newQuestion()})}
 function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function newQuestion(){answered=false;$('answer').value='';$('feedback').textContent='';$('feedback').className='feedback center';if(!words.length){$('prompt').textContent='Ajoute des mots pour commencer';return}current=Math.floor(Math.random()*words.length);let d=$('direction').value;if(d==='random')d=Math.random()<.5?'gr-en':'en-gr';current={...words[current],d};$('prompt').textContent=d==='gr-en'?current.gr:current.en;$('answer').focus()}
-function check(e){e.preventDefault();if(answered||!current)return;let expected=current.d==='gr-en'?current.en:current.gr;let ok=norm($('answer').value)===norm(expected);answered=true;total++;if(ok)score++;$('score').textContent=score+' / '+total;$('feedback').textContent=ok?'✓ Correct !':'✗ Bonne réponse : '+expected;$('feedback').className='feedback center '+(ok?'ok':'bad')}
-$('quizForm').onsubmit=check;$('next').onclick=newQuestion;$('direction').onchange=newQuestion;$('newSession').onclick=()=>{score=0;total=0;$('score').textContent='0 / 0';newQuestion()};
+function checkAnswer(){
+  if(answered||!current)return false;
+  let expected=current.d==='gr-en'?current.en:current.gr;
+  let ok=norm($('answer').value)===norm(expected);
+  answered=true; total++; if(ok)score++;
+  if(!ok) wrongWords.push({
+    question:current.d==='gr-en'?current.gr:current.en,
+    answer:$('answer').value.trim() || '(aucune réponse)',
+    expected:expected
+  });
+  $('score').textContent=score+' / '+total;
+  $('feedback').textContent=ok?'✓ Correct !':'✗ Bonne réponse : '+expected;
+  $('feedback').className='feedback center '+(ok?'ok':'bad');
+  return true;
+}
+function check(e){e.preventDefault();checkAnswer()}
+function nextAfterCheck(){
+  if(!current)return;
+  if(!answered){
+    checkAnswer();
+    $('next').textContent='Suivant…';
+    $('next').disabled=true;
+    setTimeout(()=>{ $('next').disabled=false; $('next').textContent='Suivant'; newQuestion(); },900);
+  } else newQuestion();
+}
+$('quizForm').onsubmit=check;$('next').onclick=nextAfterCheck;$('direction').onchange=newQuestion;$('newSession').onclick=()=>{score=0;total=0;wrongWords=[];$('score').textContent='0 / 0';$('summary').classList.add('hidden');$('quiz').classList.remove('hidden');newQuestion()};$('newSession').onclick=()=>{score=0;total=0;$('score').textContent='0 / 0';newQuestion()};
 $('add').onclick=()=>{let g=$('greek').value.trim(),e=$('english').value.trim();if(!g||!e){$('addMsg').textContent='Remplis les deux champs.';return}words.push({gr:g,en:e});save();$('greek').value='';$('english').value='';$('addMsg').textContent='✓ Mot ajouté.';renderWords();newQuestion();$('greek').focus()};
 $('csvFile').onchange=async ev=>{let f=ev.target.files[0];if(!f)return;let text=await f.text(),added=0;for(let line of text.split(/\r?\n/)){line=line.trim();if(!line||/^greek\s*[,;]/i.test(line))continue;let p=line.split(/[,;]/);if(p.length>=2){let g=p.shift().trim().replace(/^"|"$/g,''),e=p.join(',').trim().replace(/^"|"$/g,'');if(g&&e){words.push({gr:g,en:e});added++}}}save();renderWords();newQuestion();ev.target.value='';alert(added+' mots importés.')};
 $('export').onclick=()=>{let csv='greek,english\n'+words.map(w=>`"${w.gr.replaceAll('"','""')}","${w.en.replaceAll('"','""')}"`).join('\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='greek-vocab.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('clear').onclick=()=>{if(confirm('Effacer tous les mots ?')){words=[];save();renderWords();newQuestion()}};
+function finishSession(){
+  if(total===0){alert('Réponds au moins à un mot avant de terminer la session.');return;}
+  if(current && !answered) checkAnswer();
+  $('quiz').classList.add('hidden');
+  $('summary').classList.remove('hidden');
+  $('finalScore').textContent=score+' / '+total;
+  const pct=Math.round((score/total)*100);
+  $('finalStats').textContent=score+' bonne'+(score>1?'s':'')+' réponse'+(score>1?'s':'')+' · '+wrongWords.length+' erreur'+(wrongWords.length>1?'s':'')+' · '+pct+'%';
+  $('wrongList').innerHTML=wrongWords.length
+    ? wrongWords.map(w=>`<div class="item"><span><b>${esc(w.question)}</b><br><span class="muted">Ta réponse : ${esc(w.answer)}<br>Bonne réponse : <b>${esc(w.expected)}</b></span></span></div>`).join('')
+    : '<p class="ok" style="font-weight:700">Parfait ! Aucun mot faux. 🎉</p>';
+}
+$('finish').onclick=finishSession;
+$('restart').onclick=()=>{score=0;total=0;wrongWords=[];$('score').textContent='0 / 0';$('summary').classList.add('hidden');$('quiz').classList.remove('hidden');newQuestion()};
+
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('section').forEach(s=>s.classList.add('hidden'));$(b.dataset.tab).classList.remove('hidden')});
 renderWords();newQuestion();
 
