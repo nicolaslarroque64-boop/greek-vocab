@@ -27,8 +27,8 @@ label{display:block;font-size:14px;font-weight:650;margin:12px 0 6px}.row{displa
 @media(max-width:380px){.word{font-size:34px}.tabs{grid-template-columns:1fr}}
 </style>
 </head>
-<body>
-<main class="app">
+<body autocomplete="off">
+<main class="app" data-form-type="other">
 <header><div><h1>🇬🇷 Greek Vocab</h1><div class="muted">Ton vocabulaire, directement sur ton téléphone</div></div><button id="install" class="small hidden">Installer</button></header>
 
 <div class="tabs">
@@ -43,7 +43,7 @@ label{display:block;font-size:14px;font-weight:650;margin:12px 0 6px}.row{displa
 <div class="muted center" id="count"></div>
 <div id="prompt" class="word">Ajoute des mots pour commencer</div>
 <form id="quizForm">
-<input id="answer" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Ta traduction…">
+<input id="answer" name="vocab_answer" type="text" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-form-type="other" placeholder="Ta traduction…">
 <div class="row" style="margin-top:10px"><button class="primary" type="submit">Vérifier</button><button type="button" id="next">Suivant</button></div>
 </form>
 <div id="feedback" class="feedback center"></div>
@@ -52,8 +52,8 @@ label{display:block;font-size:14px;font-weight:650;margin:12px 0 6px}.row{displa
 
 <section id="words" class="card hidden">
 <h2>Ajouter un mot</h2>
-<label for="greek">Grec</label><input id="greek" placeholder="π.χ. καλημέρα">
-<label for="english">Anglais</label><input id="english" placeholder="e.g. good morning">
+<label for="greek">Grec</label><input id="greek" name="vocab_greek" type="text" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-form-type="other" placeholder="π.χ. καλημέρα">
+<label for="english">Anglais</label><input id="english" name="vocab_english" type="text" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-form-type="other" placeholder="e.g. good morning">
 <button id="add" class="primary" style="width:100%;margin-top:14px">Ajouter</button>
 <p id="addMsg" class="muted"></p>
 <h2 style="margin-top:24px">Mots enregistrés</h2>
