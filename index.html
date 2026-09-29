@@ -151,10 +151,9 @@ function newQuestion(keepKeyboard=true){
   current={...words[current],d};
   $('prompt').textContent=d==='gr-en'?current.gr:current.en;
   if(keepKeyboard){
-    // Keep the existing keyboard open without scrolling the page.
-    // requestAnimationFrame lets the input update before focus is restored.
     requestAnimationFrame(()=>{
-      $('answer').focus({preventScroll:true});
+      try { $('answer').focus({preventScroll:true}); }
+      catch(_) { $('answer').focus(); }
     });
   }
 }
@@ -169,25 +168,35 @@ function checkAnswer(){
     expected:expected
   });
   $('score').textContent=score+' / '+total;
-  $('feedback').textContent=ok?'✓ Correct !':'✗ Bonne réponse : '+expected;
+
+  // Vérifier: JAMAIS afficher la bonne réponse.
+  $('feedback').textContent=ok?'✓ Correct !':'✗ Faux !';
   $('feedback').className='feedback center '+(ok?'ok':'bad');
   return true;
+}
+function showCorrectAnswer(){
+  if(!current)return;
+  const expected=current.d==='gr-en'?current.en:current.gr;
+  $('feedback').textContent='Bonne réponse : '+expected;
+  $('feedback').className='feedback center';
 }
 function check(e){e.preventDefault();checkAnswer()}
 function nextAfterCheck(){
   if(!current)return;
-  if(!answered){
-    checkAnswer();
-    $('next').textContent='Suivant…';
-    $('next').disabled=true;
-    setTimeout(()=>{
-      $('next').disabled=false;
-      $('next').textContent='Suivant';
-      newQuestion(true);
-    },900);
-  } else {
+
+  // Suivant: vérifier si nécessaire, puis afficher la bonne réponse
+  // pendant exactement 2 secondes avant de passer au mot suivant.
+  if(!answered) checkAnswer();
+
+  showCorrectAnswer();
+  $('next').textContent='Suivant…';
+  $('next').disabled=true;
+
+  setTimeout(()=>{
+    $('next').disabled=false;
+    $('next').textContent='Suivant';
     newQuestion(true);
-  }
+  },2000);
 }
 $('quizForm').onsubmit=check;$('next').onclick=nextAfterCheck;$('direction').onchange=newQuestion;$('newSession').onclick=()=>{score=0;total=0;wrongWords=[];$('score').textContent='0 / 0';$('summary').classList.add('hidden');$('quiz').classList.remove('hidden');newQuestion()};$('newSession').onclick=()=>{score=0;total=0;$('score').textContent='0 / 0';newQuestion()};
 $('add').onclick=()=>{let g=$('greek').value.trim(),e=$('english').value.trim();if(!g||!e){$('addMsg').textContent='Remplis les deux champs.';return}words.push({gr:g,en:e});save();$('greek').value='';$('english').value='';$('addMsg').textContent='✓ Mot ajouté.';renderWords();newQuestion();$('greek').focus()};
@@ -221,52 +230,47 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch
 <script>
 (() => {
   const answer = document.getElementById('answer');
-  const next = document.getElementById('next');
-  const check = document.getElementById('check');
-  const finish = document.getElementById('finish');
+  const buttons = [
+    document.getElementById('next'),
+    document.getElementById('check'),
+    document.getElementById('finish')
+  ].filter(Boolean);
 
-  function keepAnswerFocus(e, action) {
-    if (!answer) return;
-    if (document.activeElement === answer) {
-      e.preventDefault();
-      e.stopPropagation();
-      action();
-      requestAnimationFrame(() => {
-        try { answer.focus({preventScroll:true}); } catch (_) { answer.focus(); }
-      });
-    }
-  }
+  if (!answer) return;
 
-  // Chrome Android normally moves focus to a tapped button. Prevent that,
-  // so the IME stays attached to the answer field.
-  [next, check, finish].forEach(btn => {
-    if (!btn) return;
+  buttons.forEach(btn => {
     btn.addEventListener('pointerdown', (e) => {
-      if (e.pointerType === 'touch' || e.pointerType === 'pen') {
-        if (document.activeElement === answer) {
-          e.preventDefault();
-          e.stopPropagation();
-          btn.dataset.handledPointer = '1';
-          if (btn === next && typeof window.nextAfterCheck === 'function') window.nextAfterCheck();
-          else if (btn === check && typeof window.checkAnswer === 'function') window.checkAnswer();
-          else if (btn === finish && typeof window.finishSession === 'function') window.finishSession();
-          requestAnimationFrame(() => {
-            try { answer.focus({preventScroll:true}); } catch (_) { answer.focus(); }
-          });
+      if ((e.pointerType === 'touch' || e.pointerType === 'pen') &&
+          document.activeElement === answer) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Prevent the following click event from executing the action twice.
+        btn.dataset.pointerHandled = '1';
+
+        if (btn.id === 'next' && typeof window.nextAfterCheck === 'function') {
+          window.nextAfterCheck();
+        } else if (btn.id === 'check' && typeof window.checkAnswer === 'function') {
+          window.checkAnswer();
+        } else if (btn.id === 'finish' && typeof window.finishSession === 'function') {
+          window.finishSession();
         }
+
+        requestAnimationFrame(() => {
+          try { answer.focus({preventScroll:true}); }
+          catch (_) { answer.focus(); }
+        });
       }
     }, {passive:false});
 
     btn.addEventListener('click', (e) => {
-      if (btn.dataset.handledPointer === '1') {
-        btn.dataset.handledPointer = '0';
+      if (btn.dataset.pointerHandled === '1') {
         e.preventDefault();
         e.stopImmediatePropagation();
+        btn.dataset.pointerHandled = '0';
       }
     }, true);
   });
-    }, {passive:true});
-  }
 })();
 </script>
 

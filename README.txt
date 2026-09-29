@@ -16,3 +16,5 @@ Version 8 - délai Suivant doublé, Vérifier stable avec clavier, feedback uniq
 Version 9 - optimisation Firefox Android : conservation du focus/clavier, interaction tactile sans transfert de focus et stabilité du défilement.
 
 Version 10 - numéro de version visible en haut de la page.
+
+Version 11 - Vérifier affiche uniquement Correct/Faux et ne doit pas déplacer l'écran; Suivant affiche la bonne réponse pendant 2 secondes avant le mot suivant. Optimisation Firefox Android et prévention du double clic tactile.
