@@ -29,6 +29,21 @@ html{overflow-anchor:none}
 #quiz{overflow-anchor:none}
 #answer{scroll-margin:0}
 </style>
+
+  <meta name="google" content="notranslate">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="autocomplete" content="off">
+
+
+<style>
+  /* Chrome Android: keep the quiz stable when the IME is open */
+  html, body { overflow-anchor: none; }
+  #quiz, #answer, #next, #check { overflow-anchor: none; }
+  #answer { scroll-margin: 0 !important; }
+  #next, #check, #finish { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  #next:focus, #check:focus, #finish:focus { outline: none; }
+</style>
+
 </head>
 <body autocomplete="off">
 <main class="app" data-form-type="other">
@@ -45,8 +60,8 @@ html{overflow-anchor:none}
 </div>
 <div class="muted center" id="count"></div>
 <div id="prompt" class="word">Ajoute des mots pour commencer</div>
-<form id="quizForm">
-<input id="answer" name="vocab_answer" type="text" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-form-type="other" placeholder="Ta traduction…">
+<form autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore="true" id="quizForm">
+<input name="greek_vocab_answer_x7" id="answer" name="vocab_answer" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" data-form-type="other" placeholder="Ta traduction…">
 <div class="row" style="margin-top:10px"><button class="primary" type="submit">Vérifier</button><button type="button" id="next">Suivant</button></div>
 </form>
 <div id="feedback" class="feedback center"></div>
@@ -63,8 +78,8 @@ html{overflow-anchor:none}
 
 <section id="words" class="card hidden">
 <h2>Ajouter un mot</h2>
-<label for="greek">Grec</label><input id="greek" name="vocab_greek" type="text" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-form-type="other" placeholder="π.χ. καλημέρα">
-<label for="english">Anglais</label><input id="english" name="vocab_english" type="text" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-form-type="other" placeholder="e.g. good morning">
+<label for="greek">Grec</label><input id="greek" name="vocab_greek" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" data-form-type="other" placeholder="π.χ. καλημέρα">
+<label for="english">Anglais</label><input id="english" name="vocab_english" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" data-form-type="other" placeholder="e.g. good morning">
 <button id="add" class="primary" style="width:100%;margin-top:14px">Ajouter</button>
 <p id="addMsg" class="muted"></p>
 <h2 style="margin-top:24px">Mots enregistrés</h2>
@@ -166,4 +181,71 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPro
 $('install').onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();deferredPrompt=null;$('install').classList.add('hidden')};
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
+
+<script>
+(() => {
+  const answer = document.getElementById('answer');
+  const next = document.getElementById('next');
+  const check = document.getElementById('check');
+  const finish = document.getElementById('finish');
+
+  function keepAnswerFocus(e, action) {
+    if (!answer) return;
+    if (document.activeElement === answer) {
+      e.preventDefault();
+      e.stopPropagation();
+      action();
+      requestAnimationFrame(() => {
+        try { answer.focus({preventScroll:true}); } catch (_) { answer.focus(); }
+      });
+    }
+  }
+
+  // Chrome Android normally moves focus to a tapped button. Prevent that,
+  // so the IME stays attached to the answer field.
+  [next, check, finish].forEach(btn => {
+    if (!btn) return;
+    btn.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+        if (document.activeElement === answer) {
+          e.preventDefault();
+          e.stopPropagation();
+          btn.dataset.handledPointer = '1';
+          if (btn === next && typeof window.nextAfterCheck === 'function') window.nextAfterCheck();
+          else if (btn === check && typeof window.checkAnswer === 'function') window.checkAnswer();
+          else if (btn === finish && typeof window.finishSession === 'function') window.finishSession();
+          requestAnimationFrame(() => {
+            try { answer.focus({preventScroll:true}); } catch (_) { answer.focus(); }
+          });
+        }
+      }
+    }, {passive:false});
+
+    btn.addEventListener('click', (e) => {
+      if (btn.dataset.handledPointer === '1') {
+        btn.dataset.handledPointer = '0';
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    }, true);
+  });
+
+  // If Chrome briefly changes the visual viewport, preserve the document position.
+  if (window.visualViewport) {
+    let lastY = window.scrollY;
+    const remember = () => { lastY = window.scrollY; };
+    window.addEventListener('scroll', remember, {passive:true});
+    window.visualViewport.addEventListener('resize', () => {
+      if (document.activeElement === answer) {
+        requestAnimationFrame(() => {
+          if (Math.abs(window.scrollY - lastY) > 2) {
+            window.scrollTo({top:lastY, left:0, behavior:'instant'});
+          }
+        });
+      }
+    }, {passive:true});
+  }
+})();
+</script>
+
 </body></html>
