@@ -100,10 +100,17 @@ html{overflow-anchor:none}
 }
 </style>
 
+<style>
+.word-category{margin:16px 0;padding:12px;border:1px solid rgba(128,128,128,.25);border-radius:12px}
+.word-category h3{margin:0 0 10px}.word-category .count{font-size:.85em;opacity:.65}
+.word-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-top:1px solid rgba(128,128,128,.15)}
+.word-text{flex:1;min-width:0}.word-text strong{display:block}.word-text span{display:block;opacity:.75}
+.cat-btn,.delete-btn{white-space:nowrap}.delete-btn{min-width:36px}.empty-cat{opacity:.6;margin:6px 0}
+</style>
 </head>
 <body autocomplete="off">
 <main class="app" data-form-type="other">
-<header><div><h1>🇬🇷 Greek Vocab <span class="app-version-inline">v13</span></h1><div class="muted">Ton vocabulaire, directement sur ton téléphone</div></div><button id="install" class="small hidden">Installer</button></header>
+<header><div><h1>🇬🇷 Greek Vocab <span class="app-version-inline">v14</span></h1><div class="muted">Ton vocabulaire, directement sur ton téléphone</div></div><button id="install" class="small hidden">Installer</button></header>
 
 <div class="tabs">
 <button data-tab="quiz">Réviser</button><button data-tab="words">Mes mots</button><button data-tab="data">Importer</button>
@@ -154,21 +161,54 @@ html{overflow-anchor:none}
 <script>
 const KEY='greek-vocab-v1';
 let words=JSON.parse(localStorage.getItem(KEY)||'[]'), current=null, answered=false, score=0,total=0, wrongWords=[];
+words=words.map(w=>({...w,category:w.category||1}));
 const $=id=>document.getElementById(id);
 function save(){localStorage.setItem(KEY,JSON.stringify(words))}
 function norm(s){return s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?;:]/g,'').replace(/\s+/g,' ')}
-function renderWords(){ $('count').textContent=words.length+' mot'+(words.length>1?'s':'')+' enregistré'+(words.length>1?'s':''); $('wordList').innerHTML=words.length?words.map((w,i)=>`<div class="item"><span><b>${esc(w.gr)}</b> — ${esc(w.en)}</span><button class="small" data-del="${i}">Supprimer</button></div>`).join(''):'<p class="muted">Aucun mot pour le moment.</p>'; document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{words.splice(+b.dataset.del,1);save();renderWords();newQuestion()})}
+function renderWords(){
+  const list=$('wordList');
+  if(!list)return;
+  if(!words.length){list.innerHTML='<p>Aucun mot enregistré.</p>';return;}
+  const groups=[{cat:1,title:'À réviser'},{cat:2,title:'Pas à réviser'}];
+  list.innerHTML=groups.map(g=>{
+    const items=words.map((w,i)=>({...w,i})).filter(w=>(w.category||1)===g.cat);
+    return `<section class="word-category">
+      <h3>${g.title} <span class="count">(${items.length})</span></h3>
+      ${items.length?items.map(w=>`
+        <div class="word-row">
+          <div class="word-text"><strong>${escapeHtml(w.gr)}</strong><span>${escapeHtml(w.en)}</span></div>
+          <button type="button" class="cat-btn" data-index="${w.i}">${g.cat===1?'→ Pas à réviser':'← À réviser'}</button>
+          <button type="button" class="delete-btn" data-index="${w.i}">×</button>
+        </div>`).join(''):'<p class="empty-cat">Aucun mot dans cette catégorie.</p>'}
+    </section>`;
+  }).join('');
+  list.querySelectorAll('.cat-btn').forEach(b=>b.addEventListener('click',()=>toggleCategory(Number(b.dataset.index))));
+  list.querySelectorAll('.delete-btn').forEach(b=>b.addEventListener('click',()=>{
+    const i=Number(b.dataset.index); words.splice(i,1); saveWords(); renderWords();
+  }));
+}
 function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+function saveWords(){ localStorage.setItem('greek-vocab-v1',JSON.stringify(words)); }
+function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toggleCategory(index){
+  if(!words[index]) return;
+  words[index].category=(words[index].category||1)===2?1:2;
+  saveWords();
+  renderWords();
+}
+
 function newQuestion(keepKeyboard=true){
   answered=false;
   $('answer').value='';
   $('feedback').textContent='';
   $('feedback').className='feedback center';
-  if(!words.length){$('prompt').textContent='Ajoute des mots pour commencer';return}
-  current=Math.floor(Math.random()*words.length);
+  const reviewWords=words.filter(w=>(w.category||1)===1);
+  if(!reviewWords.length){$('prompt').textContent='Aucun mot à réviser';return}
+  current=Math.floor(Math.random()*reviewWords.length);
   let d=$('direction').value;
   if(d==='random')d=Math.random()<.5?'gr-en':'en-gr';
-  current={...words[current],d};
+  current={...reviewWords[current],d};
   $('prompt').textContent=d==='gr-en'?current.gr:current.en;
   if(keepKeyboard){
     requestAnimationFrame(()=>{
