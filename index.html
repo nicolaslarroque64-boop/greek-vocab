@@ -110,7 +110,7 @@ html{overflow-anchor:none}
 </head>
 <body autocomplete="off">
 <main class="app" data-form-type="other">
-<header><div><h1>🇬🇷 Greek Vocab <span class="app-version-inline">v14</span></h1><div class="muted">Ton vocabulaire, directement sur ton téléphone</div></div><button id="install" class="small hidden">Installer</button></header>
+<header><div><h1>🇬🇷 Greek Vocab <span class="app-version-inline">v15</span></h1><div class="muted">Ton vocabulaire, directement sur ton téléphone</div></div><button id="install" class="small hidden">Installer</button></header>
 
 <div class="tabs">
 <button data-tab="quiz">Réviser</button><button data-tab="words">Mes mots</button><button data-tab="data">Importer</button>
@@ -172,7 +172,7 @@ function renderWords(){
   const groups=[{cat:1,title:'À réviser'},{cat:2,title:'Pas à réviser'}];
   list.innerHTML=groups.map(g=>{
     const items=words.map((w,i)=>({...w,i})).filter(w=>(w.category||1)===g.cat);
-    return `<section class="word-category">
+    return `<div class="word-category">
       <h3>${g.title} <span class="count">(${items.length})</span></h3>
       ${items.length?items.map(w=>`
         <div class="word-row">
@@ -180,7 +180,7 @@ function renderWords(){
           <button type="button" class="cat-btn" data-index="${w.i}">${g.cat===1?'→ Pas à réviser':'← À réviser'}</button>
           <button type="button" class="delete-btn" data-index="${w.i}">×</button>
         </div>`).join(''):'<p class="empty-cat">Aucun mot dans cette catégorie.</p>'}
-    </section>`;
+    </div>`;
   }).join('');
   list.querySelectorAll('.cat-btn').forEach(b=>b.addEventListener('click',()=>toggleCategory(Number(b.dataset.index))));
   list.querySelectorAll('.delete-btn').forEach(b=>b.addEventListener('click',()=>{
@@ -279,7 +279,7 @@ function finishSession(){
 $('finish').onclick=finishSession;
 $('restart').onclick=()=>{score=0;total=0;wrongWords=[];$('score').textContent='0 / 0';$('summary').classList.add('hidden');$('quiz').classList.remove('hidden');newQuestion()};
 
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('section').forEach(s=>s.classList.add('hidden'));$(b.dataset.tab).classList.remove('hidden')});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));$(b.dataset.tab).classList.remove('hidden');if(b.dataset.tab==='words')renderWords()});
 renderWords();newQuestion();
 
 let deferredPrompt;

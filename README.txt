@@ -24,3 +24,5 @@ Version 12 - Suivant affiche Correct/Faux + bonne réponse pendant 2 secondes. V
 Version 13 - version visible inline dans le titre; interaction Firefox revue pour que Vérifier conserve le focus et le clavier sans refocus asynchrone.
 
 Version 14 - deux catégories : À réviser / Pas à réviser. Déplacement possible dans les deux sens; seuls les mots À réviser entrent dans les sessions.
+
+Version 15 - correction de l'affichage de Mes mots : les catégories ne sont plus masquées par le système d'onglets.
